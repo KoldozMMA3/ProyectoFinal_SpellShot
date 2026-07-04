@@ -4,24 +4,23 @@ namespace SpellShot.Gameplay
 {
     public class GameManager : MonoBehaviour
     {
-        // Instancia estática global (Patrón Singleton)
         public static GameManager Instance { get; private set; }
 
-        [Header("Efectos de Partículas (Requerimiento 3)")]
+        [Header("Configuración de Partida")]
+        [SerializeField] private int currentScore = 0;
+        [SerializeField] private int lives = 3; // El jugador arranca con 3 vidas
+
+        [Header("Referencias de FX (Prefabs)")]
         [SerializeField] private GameObject correctParticlesPrefab;
         [SerializeField] private GameObject incorrectParticlesPrefab;
 
-        [Header("Efectos de Sonido (Requerimiento 6)")]
+        [Header("Referencias de Audio")]
         [SerializeField] private AudioSource audioSource;
         [SerializeField] private AudioClip hitCorrectClip;
         [SerializeField] private AudioClip hitIncorrectClip;
 
-        // Registro de puntuación acumulada (Requerimiento 8)
-        private int currentScore = 0;
-
         private void Awake()
         {
-            // Garantizar que solo exista un GameManager en escena
             if (Instance == null)
             {
                 Instance = this;
@@ -34,39 +33,80 @@ namespace SpellShot.Gameplay
         }
 
         /// <summary>
-        /// Procesa el impacto de una palabra evaluando si es un acierto o error de forma profesional.
+        /// Procesa el impacto de un láser con una palabra validando estrictamente los datos del HUD.
         /// </summary>
-        public void ProcessWordHit(bool isCorrect, Vector3 spawnPosition)
+        public void ProcessWordHitWithData(TargetWord struckWord, Vector3 position)
         {
-            if (isCorrect)
+            WaveManager waveInstance = Object.FindFirstObjectByType<WaveManager>();
+            if (waveInstance == null) return;
+
+            // Comparamos el ScriptableObject de la palabra golpeada contra el objetivo activo en el HUD
+            bool isStrictlyCorrect = struckWord.GetWordData() == waveInstance.CurrentTargetWord;
+
+            if (isStrictlyCorrect)
             {
                 currentScore += 10;
-                Debug.Log($"¡Palabra Correcta! Puntuación: {currentScore}");
 
-                // Retroalimentación Visual Verde
-                if (correctParticlesPrefab != null)
-                    Instantiate(correctParticlesPrefab, spawnPosition, Quaternion.identity);
+                if (HUDManager.Instance != null)
+                    HUDManager.Instance.UpdateScoreUI(currentScore);
 
-                // Retroalimentación Sonora de Acierto
+                // ¡Sincronía total!: Cambiamos al siguiente objetivo al acertar usando el método correcto
+                waveInstance.SelectNextTargetWord();
+
                 if (audioSource != null && hitCorrectClip != null)
                     audioSource.PlayOneShot(hitCorrectClip);
+
+                if (correctParticlesPrefab != null)
+                    Instantiate(correctParticlesPrefab, position, Quaternion.identity);
             }
             else
             {
-                currentScore = Mathf.Max(0, currentScore - 5); // Evita puntajes negativos
-                Debug.Log($"¡Palabra Incorrecta! Puntuación: {currentScore}");
+                currentScore = Mathf.Max(0, currentScore - 5);
 
-                // Retroalimentación Visual Roja
-                if (incorrectParticlesPrefab != null)
-                    Instantiate(incorrectParticlesPrefab, spawnPosition, Quaternion.identity);
+                if (HUDManager.Instance != null)
+                    HUDManager.Instance.UpdateScoreUI(currentScore);
 
-                // Retroalimentación Sonora de Error
+                TakeDamage();
+
                 if (audioSource != null && hitIncorrectClip != null)
                     audioSource.PlayOneShot(hitIncorrectClip);
+
+                if (incorrectParticlesPrefab != null)
+                    Instantiate(incorrectParticlesPrefab, position, Quaternion.identity);
             }
         }
 
-        // Método público para leer el puntaje desde el HUD más adelante
-        public int GetScore() => currentScore;
+        /// <summary>
+        /// Resta una vida al jugador y valida el estado de Game Over.
+        /// </summary>
+        public void TakeDamage()
+        {
+            lives--;
+            Debug.Log($"¡DAÑO DETECTADO! Vidas restantes: {lives}");
+            
+            if (lives <= 0)
+            {
+                TriggerGameOver();
+            }
+        }
+
+        private void TriggerGameOver()
+        {
+            Debug.LogError("¡GAME OVER! Te has quedado sin vidas.");
+            
+            // Muestra el letrero visual en la pantalla
+            if (HUDManager.Instance != null)
+            {
+                HUDManager.Instance.ShowGameOverUI();
+            }
+
+            Time.timeScale = 0f; // Congela el juego de forma segura
+        }
+
+        public void ResetGameVariables()
+        {
+            currentScore = 0;
+            lives = 3; // Devolvemos las 3 vidas completas
+        }
     }
 }

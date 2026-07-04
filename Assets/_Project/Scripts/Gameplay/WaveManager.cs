@@ -19,18 +19,25 @@ namespace SpellShot.Gameplay
 
         private float spawnTimer;
         private int currentWave = 1;
+        private WordData currentTargetWord; 
+
+        // Propiedad pública segura para que el GameManager verifique la palabra activa
+        public WordData CurrentTargetWord => currentTargetWord;
 
         private void Start()
         {
             if (wordBank.Count == 0)
             {
                 Debug.LogError("El Banco de Datos de Palabras está vacío. Agrega WordData en el Inspector.");
+                return;
             }
+
+            // Selecciona la primera palabra objetivo del juego
+            SelectNextTargetWord();
         }
 
         private void Update()
         {
-            // Sistema de temporizador automático para spawnear palabras
             spawnTimer += Time.deltaTime;
             if (spawnTimer >= spawnInterval)
             {
@@ -39,21 +46,42 @@ namespace SpellShot.Gameplay
             }
         }
 
+        /// <summary>
+        /// Elige una nueva palabra objetivo del banco y actualiza el HUD en perfecta sincronía.
+        /// </summary>
+        public void SelectNextTargetWord()
+        {
+            if (wordBank.Count == 0) return;
+
+            // Elegimos una palabra completamente al azar del banco
+            int randomIndex = Random.Range(0, wordBank.Count);
+            currentTargetWord = wordBank[randomIndex];
+
+            if (currentTargetWord != null && HUDManager.Instance != null)
+            {
+                HUDManager.Instance.UpdateTargetWordUI(currentTargetWord.translationToSpanish);
+            }
+        }
+
         private void SpawnRandomWord()
         {
             if (wordBank.Count == 0 || targetWordPrefab == null) return;
 
-            // 1. Elegir una palabra al azar de nuestro banco de ScriptableObjects
-            int randomIndex = Random.Range(0, wordBank.Count);
-            WordData selectedData = wordBank[randomIndex];
+            // Balanceo de Gameplay: 40% de probabilidad de lanzar la palabra correcta, 
+            // 60% de lanzar distractores para que el jugador busque en pantalla.
+            WordData selectedData = null;
+            if (Random.value < 0.4f && currentTargetWord != null)
+            {
+                selectedData = currentTargetWord;
+            }
+            else
+            {
+                selectedData = wordBank[Random.Range(0, wordBank.Count)];
+            }
 
-            // 2. Calcular una posición horizontal aleatoria en la parte superior
             Vector2 spawnPosition = new Vector2(Random.Range(-xSpawnRange, xSpawnRange), ySpawnPosition);
-
-            // 3. Instanciar el Prefab de la palabra en el mundo físico
             GameObject spawnedObject = Instantiate(targetWordPrefab, spawnPosition, Quaternion.identity);
 
-            // 4. Inyectar los datos del ScriptableObject al objeto clonado
             TargetWord targetWordComponent = spawnedObject.GetComponent<TargetWord>();
             if (targetWordComponent != null)
             {
@@ -61,14 +89,11 @@ namespace SpellShot.Gameplay
             }
         }
 
-        /// <summary>
-        /// Método profesional para incrementar la dificultad de la oleada (Requerimiento 5).
-        /// </summary>
         public void NextWave()
         {
             currentWave++;
-            // Incrementa la dificultad reduciendo el tiempo de aparición entre palabras
             spawnInterval = Mathf.Max(1f, spawnInterval - 0.3f);
+            SelectNextTargetWord(); 
             Debug.Log($"¡Iniciando Oleada {currentWave}! Intervalo de aparición: {spawnInterval}s");
         }
     }
