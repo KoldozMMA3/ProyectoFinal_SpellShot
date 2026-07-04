@@ -13,38 +13,45 @@ namespace SpellShot.Gameplay
         [Header("Referencias de UI")]
         [SerializeField] private TextMeshPro textMesh;
 
-        // Almacena los datos lingüísticos de esta palabra específica
         private WordData wordData;
 
-        /// <summary>
-        /// Método profesional para inicializar dinámicamente el objetivo desde el Spawner.
-        /// </summary>
         public void Setup(WordData data)
         {
             wordData = data;
             
             if (textMesh != null && wordData != null)
             {
-                // Asigna el texto en inglés al componente visual
                 textMesh.text = wordData.wordInEnglish;
             }
         }
 
-        // Retorna si esta palabra es el objetivo correcto de la oleada
         public bool IsCorrect() => wordData != null && wordData.isCorrectTarget;
-
-        // Retorna la traducción para la retroalimentación en caso de error
         public string GetTranslation() => wordData != null ? wordData.translationToSpanish : "";
 
         private void Update()
         {
-            // Hace que la palabra descienda constantemente de forma suave
+            // Mueve el bloque completo
             transform.Translate(Vector2.down * fallSpeed * Time.deltaTime);
 
-            // Optimización: Si la palabra sale de la pantalla por abajo, se destruye
-            if (transform.position.y < -6f)
+            // Cambiado de -6f a -16f para adaptarse al nuevo zoom de la Main Camera
+            if (transform.position.y < -16f)
             {
                 Destroy(gameObject);
+            }
+        }
+
+        private void OnTriggerEnter2D(Collider2D collision)
+        {
+            // En cuanto el láser dinámico toque este colisionador, se activará el impacto
+            if (collision.gameObject.name.Contains("LaserPrefab") || collision.GetComponent<Projectile>() != null)
+            {
+                if (GameManager.Instance != null)
+                {
+                    GameManager.Instance.ProcessWordHit(IsCorrect(), transform.position);
+                }
+
+                Destroy(collision.gameObject); // Destruye el láser
+                Destroy(gameObject);           // Destruye la palabra
             }
         }
     }
