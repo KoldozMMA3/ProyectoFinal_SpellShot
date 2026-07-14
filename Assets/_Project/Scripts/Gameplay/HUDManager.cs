@@ -7,73 +7,59 @@ namespace SpellShot.Gameplay
     {
         public static HUDManager Instance { get; private set; }
 
-        [Header("Referencias de UI (TextMeshPro UGUI)")]
+        [Header("Textos del HUD")]
         [SerializeField] private TextMeshProUGUI scoreText;
         [SerializeField] private TextMeshProUGUI targetText;
-        
-        [Header("Panel de Estado")]
-        [SerializeField] private GameObject gameOverPanel; // Casilla para el panel de Game Over
+
+        [Header("Vidas (Corazones)")]
+        [SerializeField] private GameObject[] heartIcons; // Arreglo para guardar los 3 iconos
+
+        [Header("Paneles de Menú")]
+        [SerializeField] private GameObject gameOverPanel;
 
         private void Awake()
         {
-            if (Instance == null)
-            {
-                Instance = this;
-            }
-            else
-            {
-                Destroy(gameObject);
-            }
-        }
+            if (Instance == null) Instance = this;
+            else Destroy(gameObject);
 
-        private void Start()
-        {
-            UpdateScoreUI(0);
+            // CANDADO INICIAL: Apaga el panel de Game Over al arrancar la escena
             if (gameOverPanel != null)
             {
-                gameOverPanel.SetActive(false); // Nos aseguramos de que empiece oculto
+                gameOverPanel.SetActive(false);
             }
         }
 
-        public void UpdateScoreUI(int currentScore)
-        {
-            if (scoreText != null)
-            {
-                scoreText.text = $"Puntaje: {currentScore}";
-            }
-        }
-
-        public void UpdateTargetWordUI(string spanishWord)
-        {
-            if (targetText != null)
-            {
-                targetText.text = $"Dispara a: <color=yellow>{spanishWord.ToUpper()}</color>";
-            }
-        }
+        public void UpdateScoreUI(int score) => scoreText.text = $"Puntaje: {score}";
+        
+        public void UpdateTargetWordUI(string translation) => targetText.text = $"Dispara a:\n<color=#FFD700>{translation.ToUpper()}</color>";
 
         /// <summary>
-        /// Enciende el letrero visual de Game Over en la pantalla.
+        /// Apaga o enciende los iconos de corazones según las vidas restantes.
         /// </summary>
+        public void UpdateLivesUI(int currentLives)
+        {
+            for (int i = 0; i < heartIcons.Length; i++)
+            {
+                if (heartIcons[i] != null)
+                {
+                    // Si el índice del corazón es menor a las vidas actuales, se enciende. Si no, se apaga.
+                    heartIcons[i].SetActive(i < currentLives);
+                }
+            }
+        }
+
         public void ShowGameOverUI()
         {
-            if (gameOverPanel != null)
-            {
-                gameOverPanel.SetActive(true);
-            }
+            if (gameOverPanel != null) gameOverPanel.SetActive(true);
         }
 
         public void RestartGame()
         {
-            // 1. Volvemos a activar el tiempo normal del juego
             Time.timeScale = 1f;
             
-            // 2. ¡CABLE DE LIMPIEZA!: Le ordenamos al GameManager persistente que borre los puntos y vidas viejos
             if (GameManager.Instance != null)
-            {
                 GameManager.Instance.ResetGameVariables();
-            }
             
-            // 3. Volvemos a cargar la escena limpia
             string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             UnityEngine.SceneManagement.SceneManager.LoadScene(currentSceneName);
         }

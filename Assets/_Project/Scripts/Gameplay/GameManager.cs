@@ -19,6 +19,7 @@ namespace SpellShot.Gameplay
         [SerializeField] private AudioClip hitCorrectClip;
         [SerializeField] private AudioClip hitIncorrectClip;
 
+        
         private void Awake()
         {
             if (Instance == null)
@@ -34,7 +35,6 @@ namespace SpellShot.Gameplay
 
         /// <summary>
         /// Procesa el impacto de un láser con una palabra validando estrictamente los datos del HUD.
-        /// </summary>
         public void ProcessWordHitWithData(TargetWord struckWord, Vector3 position)
         {
             WaveManager waveInstance = Object.FindFirstObjectByType<WaveManager>();
@@ -84,6 +84,12 @@ namespace SpellShot.Gameplay
             lives--;
             Debug.Log($"¡DAÑO DETECTADO! Vidas restantes: {lives}");
             
+            // ¡CABLE VISUAL!: Le avisamos al HUD que apague un corazón
+            if (HUDManager.Instance != null)
+            {
+                HUDManager.Instance.UpdateLivesUI(lives);
+            }
+
             if (lives <= 0)
             {
                 TriggerGameOver();
@@ -106,7 +112,13 @@ namespace SpellShot.Gameplay
         public void ResetGameVariables()
         {
             currentScore = 0;
-            lives = 3; // Devolvemos las 3 vidas completas
+            lives = 3; 
+
+            // ¡CABLE VISUAL!: Encendemos todos los corazones al reiniciar la partida
+            if (HUDManager.Instance != null)
+            {
+                HUDManager.Instance.UpdateLivesUI(lives);
+            }
         }
     }
 }

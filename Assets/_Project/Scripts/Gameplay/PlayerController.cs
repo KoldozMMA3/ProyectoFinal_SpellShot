@@ -7,7 +7,7 @@ namespace SpellShot.Gameplay
     public class PlayerController : MonoBehaviour
     {
         [Header("Configuración de Movimiento")]
-        [SerializeField] private float moveSpeed = 5f;
+        [SerializeField] private float moveSpeed = 10f;
 
         private Rigidbody2D rb;
         private Vector2 moveInput;

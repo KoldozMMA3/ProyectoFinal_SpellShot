@@ -14,7 +14,7 @@ namespace SpellShot.Gameplay
 
         [Header("Configuración de la Oleada")]
         [SerializeField] private float spawnInterval = 3f;
-        [SerializeField] private float xSpawnRange = 6f;
+        [SerializeField] private float xSpawnRange = 30f;
         [SerializeField] private float ySpawnPosition = 6f;
 
         private float spawnTimer;
