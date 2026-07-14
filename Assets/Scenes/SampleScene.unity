@@ -547,6 +547,7 @@ GameObject:
   - component: {fileID: 184748021}
   - component: {fileID: 184748027}
   - component: {fileID: 184748028}
+  - component: {fileID: 184748029}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -762,7 +763,7 @@ Transform:
   m_GameObject: {fileID: 184748020}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: -10, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -782,6 +783,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellShot.Gameplay.PlayerController
   moveSpeed: 10
+  animator: {fileID: 0}
 --- !u!114 &184748028
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -796,6 +798,28 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SpellShot.Gameplay.PlayerShooting
   projectilePrefab: {fileID: 3140345469204223955, guid: ff95a185e90c4574aa04bdd2984bcd42, type: 3}
   firePoint: {fileID: 1733282229}
+--- !u!95 &184748029
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 184748020}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: b1806c4a116549a488058c4897331305, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &346444555
 GameObject:
   m_ObjectHideFlags: 0
@@ -1087,7 +1111,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &385669133
 RectTransform:
   m_ObjectHideFlags: 0
