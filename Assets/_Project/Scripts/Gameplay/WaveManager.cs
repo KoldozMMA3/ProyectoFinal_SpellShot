@@ -1,38 +1,30 @@
-using System.Collections.Generic;
 using UnityEngine;
+using System.Collections.Generic;
+using System.Linq;
 using SpellShot.Data;
 
 namespace SpellShot.Gameplay
 {
     public class WaveManager : MonoBehaviour
     {
-        [Header("Referencias de Plantillas")]
-        [SerializeField] private GameObject targetWordPrefab;
-
-        [Header("Banco de Datos de Palabras")]
+        [Header("Banco de Datos")]
         [SerializeField] private List<WordData> wordBank = new List<WordData>();
 
-        [Header("Configuración de la Oleada")]
+        [Header("Configuración de Oleada")]
+        [SerializeField] private GameObject targetWordPrefab;
         [SerializeField] private float spawnInterval = 3f;
         [SerializeField] private float xSpawnRange = 30f;
         [SerializeField] private float ySpawnPosition = 6f;
 
-        private float spawnTimer;
-        private int currentWave = 1;
-        private WordData currentTargetWord; 
+        private WordData currentTargetWord;
+        private float spawnTimer = 0f;
+        private int currentLevelCategory = 1;
 
-        // Propiedad pública segura para que el GameManager verifique la palabra activa
         public WordData CurrentTargetWord => currentTargetWord;
 
         private void Start()
         {
-            if (wordBank.Count == 0)
-            {
-                Debug.LogError("El Banco de Datos de Palabras está vacío. Agrega WordData en el Inspector.");
-                return;
-            }
-
-            // Selecciona la primera palabra objetivo del juego
+            if (wordBank.Count == 0) return;
             SelectNextTargetWord();
         }
 
@@ -47,15 +39,37 @@ namespace SpellShot.Gameplay
         }
 
         /// <summary>
-        /// Elige una nueva palabra objetivo del banco y actualiza el HUD en perfecta sincronía.
+        /// Cambia la dificultad y exige palabras EXCLUSIVAS del nuevo Nivel.
         /// </summary>
+        public void SetLevelDifficulty(int level)
+        {
+            currentLevelCategory = level;
+
+            switch (level)
+            {
+                case 1:
+                    spawnInterval = 1.5f;
+                    break;
+                case 2:
+                    spawnInterval = 0.8f; // Más rápido
+                    break;
+                case 3:
+                    spawnInterval = 0.2f; // Ritmo ágil para el Nivel Final
+                    break;
+            }
+
+            // ¡Sincronía total!: Forzamos el cambio inmediato a un objetivo del NUEVO nivel
+            SelectNextTargetWord();
+
+            Debug.Log($"WaveManager ajustado EXCLUSIVAMENTE a Nivel {level}. Intervalo: {spawnInterval}s");
+        }
+
         public void SelectNextTargetWord()
         {
-            if (wordBank.Count == 0) return;
+            List<WordData> availableWords = GetFilteredWords();
 
-            // Elegimos una palabra completamente al azar del banco
-            int randomIndex = Random.Range(0, wordBank.Count);
-            currentTargetWord = wordBank[randomIndex];
+            int randomIndex = Random.Range(0, availableWords.Count);
+            currentTargetWord = availableWords[randomIndex];
 
             if (currentTargetWord != null && HUDManager.Instance != null)
             {
@@ -65,19 +79,12 @@ namespace SpellShot.Gameplay
 
         private void SpawnRandomWord()
         {
-            if (wordBank.Count == 0 || targetWordPrefab == null) return;
+            List<WordData> availableWords = GetFilteredWords();
 
-            // Balanceo de Gameplay: 40% de probabilidad de lanzar la palabra correcta, 
-            // 60% de lanzar distractores para que el jugador busque en pantalla.
-            WordData selectedData = null;
-            if (Random.value < 0.4f && currentTargetWord != null)
-            {
-                selectedData = currentTargetWord;
-            }
-            else
-            {
-                selectedData = wordBank[Random.Range(0, wordBank.Count)];
-            }
+            // 40% probabilidad de generar la palabra objetivo activa del HUD, 60% distractores del MISMO NIVEL
+            WordData selectedData = (Random.value < 0.4f && currentTargetWord != null)
+                ? currentTargetWord
+                : availableWords[Random.Range(0, availableWords.Count)];
 
             Vector2 spawnPosition = new Vector2(Random.Range(-xSpawnRange, xSpawnRange), ySpawnPosition);
             GameObject spawnedObject = Instantiate(targetWordPrefab, spawnPosition, Quaternion.identity);
@@ -89,12 +96,22 @@ namespace SpellShot.Gameplay
             }
         }
 
-        public void NextWave()
+        /// <summary>
+        /// Filtra el banco para obtener ÚNICAMENTE las palabras del nivel actual.
+        /// </summary>
+        private List<WordData> GetFilteredWords()
         {
-            currentWave++;
-            spawnInterval = Mathf.Max(1f, spawnInterval - 0.3f);
-            SelectNextTargetWord(); 
-            Debug.Log($"¡Iniciando Oleada {currentWave}! Intervalo de aparición: {spawnInterval}s");
+            // FILTRADO ESTRICTO (==): Solo palabras asignadas a este nivel específico
+            List<WordData> filtered = wordBank.Where(w => w != null && w.levelCategory == currentLevelCategory).ToList();
+
+            // Failsafe: Si no hay palabras configuradas para este nivel en el banco, usa todo el banco para no congelar el juego
+            if (filtered.Count == 0)
+            {
+                Debug.LogWarning($"No hay palabras con Level Category = {currentLevelCategory}. Usando todo el banco.");
+                return wordBank;
+            }
+
+            return filtered;
         }
     }
 }

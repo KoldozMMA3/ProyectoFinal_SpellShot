@@ -8,7 +8,20 @@ namespace SpellShot.Gameplay
 
         [Header("Configuración de Partida")]
         [SerializeField] private int currentScore = 0;
-        [SerializeField] private int lives = 3; // El jugador arranca con 3 vidas
+        [SerializeField] private int lives = 3;
+        [SerializeField] private int currentLevel = 1;
+        [SerializeField] private int totalCorrectHits = 0; // Contador total de aciertos
+
+        [Header("Cronómetro de Juego")]
+        [SerializeField] private float gameTimer = 0f;
+        [SerializeField] private float fastTimeThreshold = 90f; // Menos de 90 segundos = súper veloz
+
+        [Header("Meta de Victoria")]
+        [SerializeField] private int winScoreThreshold = 200; // Puntos requeridos para ganar el juego
+
+        [Header("Umbrales de Puntuación por Nivel")]
+        [SerializeField] private int level2ScoreThreshold = 100;
+        [SerializeField] private int level3ScoreThreshold = 150;
 
         [Header("Referencias de FX (Prefabs)")]
         [SerializeField] private GameObject correctParticlesPrefab;
@@ -19,7 +32,8 @@ namespace SpellShot.Gameplay
         [SerializeField] private AudioClip hitCorrectClip;
         [SerializeField] private AudioClip hitIncorrectClip;
 
-        
+        private bool isGameOverOrWon = false;
+
         private void Awake()
         {
             if (Instance == null)
@@ -33,24 +47,60 @@ namespace SpellShot.Gameplay
             }
         }
 
-        /// <summary>
-        /// Procesa el impacto de un láser con una palabra validando estrictamente los datos del HUD.
+        private void Start()
+        {
+            if (HUDManager.Instance != null)
+            {
+                HUDManager.Instance.UpdateLevelUI(currentLevel);
+                HUDManager.Instance.UpdateHitsUI(totalCorrectHits);
+                HUDManager.Instance.ShowLevelAnnouncement("¡NIVEL 1!");
+            }
+        }
+
+        private void Update()
+        {
+            // Acumula tiempo en vivo si la partida está activa
+            if (!isGameOverOrWon && Time.timeScale > 0f)
+            {
+                gameTimer += Time.deltaTime;
+
+                if (HUDManager.Instance != null)
+                {
+                    HUDManager.Instance.UpdateTimerUI(gameTimer);
+                }
+            }
+        }
+
         public void ProcessWordHitWithData(TargetWord struckWord, Vector3 position)
         {
+            if (isGameOverOrWon) return;
+
             WaveManager waveInstance = Object.FindFirstObjectByType<WaveManager>();
             if (waveInstance == null) return;
 
-            // Comparamos el ScriptableObject de la palabra golpeada contra el objetivo activo en el HUD
             bool isStrictlyCorrect = struckWord.GetWordData() == waveInstance.CurrentTargetWord;
 
             if (isStrictlyCorrect)
             {
                 currentScore += 10;
+                totalCorrectHits++; // Incrementa contador de aciertos
 
                 if (HUDManager.Instance != null)
+                {
                     HUDManager.Instance.UpdateScoreUI(currentScore);
+                    HUDManager.Instance.UpdateHitsUI(totalCorrectHits);
+                }
 
-                // ¡Sincronía total!: Cambiamos al siguiente objetivo al acertar usando el método correcto
+                // ¿ALCANZÓ LA META FINAL DEL JUEGO?
+                if (currentScore >= winScoreThreshold)
+                {
+                    TriggerGameWin();
+                    return;
+                }
+
+                // Evalúa paso a Nivel 2 o 3
+                CheckLevelProgression(waveInstance);
+
                 waveInstance.SelectNextTargetWord();
 
                 if (audioSource != null && hitCorrectClip != null)
@@ -66,7 +116,6 @@ namespace SpellShot.Gameplay
                 if (HUDManager.Instance != null)
                 {
                     HUDManager.Instance.UpdateScoreUI(currentScore);
-                    // RETROALIMENTACIÓN DE ERROR (Requerimiento 9)
                     HUDManager.Instance.ShowErrorFeedback(struckWord.GetWordData().wordInEnglish, struckWord.GetWordData().translationToSpanish);
                 }
 
@@ -80,19 +129,64 @@ namespace SpellShot.Gameplay
             }
         }
 
+        private void CheckLevelProgression(WaveManager waveInstance)
+        {
+            if (currentScore >= level3ScoreThreshold && currentLevel < 3)
+            {
+                SetLevel(3, "¡NIVEL 3 - NIVEL FINAL!", waveInstance);
+            }
+            else if (currentScore >= level2ScoreThreshold && currentLevel < 2)
+            {
+                SetLevel(2, "¡NIVEL 2!", waveInstance);
+            }
+        }
+
+        private void SetLevel(int newLevel, string levelAnnouncement, WaveManager waveInstance)
+        {
+            currentLevel = newLevel;
+
+            if (HUDManager.Instance != null)
+            {
+                HUDManager.Instance.UpdateLevelUI(currentLevel);
+                HUDManager.Instance.ShowLevelAnnouncement(levelAnnouncement);
+            }
+
+            if (waveInstance != null)
+            {
+                waveInstance.SetLevelDifficulty(currentLevel);
+            }
+        }
+
         /// <summary>
-        /// Resta una vida al jugador y valida el estado de Game Over.
+        /// Evalúa la velocidad al llegar a la meta y dispara la pantalla de Victoria.
         /// </summary>
+        private void TriggerGameWin()
+        {
+            isGameOverOrWon = true;
+            Time.timeScale = 0f; // Congela el juego
+
+            string message;
+            if (gameTimer <= fastTimeThreshold)
+            {
+                message = "<color=#00FF00>¡FELICIDADES ACABASTE EL JUEGO!</color>\n<color=#FFD700>¡Eres súper veloz! 🚀</color>";
+            }
+            else
+            {
+                message = "<color=#FF8800>¡Completaste la meta!</color>\nPero eres súper lento 🐢.\n<i>Mejora tu nivel de inglés o muévete estratégicamente.</i>";
+            }
+
+            if (HUDManager.Instance != null)
+            {
+                HUDManager.Instance.ShowGameWinUI(message, totalCorrectHits, gameTimer);
+            }
+        }
+
         public void TakeDamage()
         {
             lives--;
-            Debug.Log($"¡DAÑO DETECTADO! Vidas restantes: {lives}");
-            
-            // ¡CABLE VISUAL!: Le avisamos al HUD que apague un corazón
+
             if (HUDManager.Instance != null)
-            {
                 HUDManager.Instance.UpdateLivesUI(lives);
-            }
 
             if (lives <= 0)
             {
@@ -102,26 +196,37 @@ namespace SpellShot.Gameplay
 
         private void TriggerGameOver()
         {
-            Debug.LogError("¡GAME OVER! Te has quedado sin vidas.");
-            
-            // Muestra el letrero visual en la pantalla
-            if (HUDManager.Instance != null)
-            {
-                HUDManager.Instance.ShowGameOverUI();
-            }
+            isGameOverOrWon = true;
 
-            Time.timeScale = 0f; // Congela el juego de forma segura
+            if (HUDManager.Instance != null)
+                HUDManager.Instance.ShowGameOverUI();
+
+            Time.timeScale = 0f;
         }
 
         public void ResetGameVariables()
         {
             currentScore = 0;
-            lives = 3; 
+            lives = 3;
+            currentLevel = 1;
+            totalCorrectHits = 0;
+            gameTimer = 0f;
+            isGameOverOrWon = false;
 
-            // ¡CABLE VISUAL!: Encendemos todos los corazones al reiniciar la partida
             if (HUDManager.Instance != null)
             {
+                HUDManager.Instance.UpdateScoreUI(currentScore);
+                HUDManager.Instance.UpdateLevelUI(currentLevel);
                 HUDManager.Instance.UpdateLivesUI(lives);
+                HUDManager.Instance.UpdateHitsUI(totalCorrectHits);
+                HUDManager.Instance.UpdateTimerUI(gameTimer);
+                HUDManager.Instance.ShowLevelAnnouncement("¡NIVEL 1!");
+            }
+
+            WaveManager waveInstance = Object.FindFirstObjectByType<WaveManager>();
+            if (waveInstance != null)
+            {
+                waveInstance.SetLevelDifficulty(1);
             }
         }
     }
