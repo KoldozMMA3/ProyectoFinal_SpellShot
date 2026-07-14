@@ -64,7 +64,11 @@ namespace SpellShot.Gameplay
                 currentScore = Mathf.Max(0, currentScore - 5);
 
                 if (HUDManager.Instance != null)
+                {
                     HUDManager.Instance.UpdateScoreUI(currentScore);
+                    // RETROALIMENTACIÓN DE ERROR (Requerimiento 9)
+                    HUDManager.Instance.ShowErrorFeedback(struckWord.GetWordData().wordInEnglish, struckWord.GetWordData().translationToSpanish);
+                }
 
                 TakeDamage();
 

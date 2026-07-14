@@ -15,19 +15,22 @@ namespace SpellShot.Gameplay
 
                 // 2. Luego procesamos las reglas de juego de forma segura en el mismo frame
                 WaveManager waveInstance = Object.FindFirstObjectByType<WaveManager>();
-                if (waveInstance != null)
+                if (waveInstance != null && word.GetWordData() == waveInstance.CurrentTargetWord)
                 {
-                    if (word.GetWordData() == waveInstance.CurrentTargetWord)
+                    Debug.Log($"¡Objetivo perdido! Se escapó: {word.GetWordData().wordInEnglish}");
+                    
+                    if (HUDManager.Instance != null)
                     {
-                        Debug.Log($"¡Objetivo perdido! Se escapó: {word.GetWordData().wordInEnglish}");
-                        if (GameManager.Instance != null)
-                        {
-                            GameManager.Instance.TakeDamage(); // Quita vida legítimamente
-                        }
-                        
-                        // Actualiza el HUD con una nueva palabra de inmediato
-                        waveInstance.SelectNextTargetWord();
+                        // RETROALIMENTACIÓN DE ESCAPE (Requerimiento 9)
+                        HUDManager.Instance.ShowErrorFeedback(word.GetWordData().wordInEnglish, word.GetWordData().translationToSpanish);
                     }
+
+                    if (GameManager.Instance != null)
+                    {
+                        GameManager.Instance.TakeDamage();
+                    }
+                    
+                    waveInstance.SelectNextTargetWord();
                 }
 
                 // 3. La eliminamos por completo de la escena
